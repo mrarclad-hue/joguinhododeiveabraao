@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Deive Abraão - Mobile Edition</title>
+    <title>Deive Abraão - Multi-Touch Edition</title>
     <style>
         body {
             margin: 0; padding: 0;
@@ -24,50 +24,57 @@
             background: rgba(0,0,0,0.8);
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
-            z-index: 10;
+            z-index: 20;
         }
         #controls {
             display: flex; justify-content: space-between;
             width: 100%; max-width: 800px;
             padding: 20px; box-sizing: border-box;
             align-items: center;
+            pointer-events: none; /* Deixa passar para os elementos filhos */
         }
-        /* Estilo do Analógico */
+        
+        /* ANALÓGICO */
         #joystick-container {
-            width: 110px; height: 110px;
+            width: 120px; height: 120px;
             background: rgba(255,255,255,0.1);
-            border: 2px solid rgba(255,255,255,0.3);
+            border: 3px solid rgba(255,255,255,0.2);
             border-radius: 50%;
             position: relative;
             touch-action: none;
-            transition: transform 0.1s;
+            pointer-events: auto;
         }
-        #joystick-container:active { transform: scale(1.05); border-color: #00d4ff; }
-        
         #joystick-knob {
             width: 50px; height: 50px;
             background: #fff;
             border-radius: 50%;
-            position: absolute; top: 30px; left: 30px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            position: absolute; top: 35px; left: 35px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.4);
             pointer-events: none;
+            transition: background 0.2s;
         }
 
-        /* Estilo dos Botões com Animação */
-        .action-btns { display: flex; gap: 20px; }
+        /* BOTÕES DE AÇÃO */
+        .action-btns { 
+            display: flex; gap: 15px; 
+            pointer-events: auto;
+        }
         .btn {
             background: #2a2a2a; border: 3px solid #444;
-            color: white; width: 70px; height: 70px;
+            color: white; width: 75px; height: 75px;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-weight: bold; font-size: 14px;
             user-select: none; -webkit-tap-highlight-color: transparent;
-            transition: all 0.1s ease;
-            box-shadow: 0 4px 0 #000;
+            transition: transform 0.05s, background 0.1s;
+            box-shadow: 0 5px 0 #000;
+            pointer-events: auto;
         }
+        /* Animação ao apertar */
         .btn:active {
-            transform: scale(0.85) translateY(4px);
-            box-shadow: 0 0 0 #000;
+            transform: scale(0.9) translateY(4px);
+            box-shadow: 0 2px 0 #000;
+            filter: brightness(1.3);
         }
         .btn-jump { background: #0084ff; border-color: #00d4ff; }
         .btn-shoot { background: #ff4757; border-color: #ff6b81; }
@@ -75,7 +82,7 @@
         .btn-pause { 
             position: absolute; top: 10px; right: 10px; 
             width: 45px; height: 45px; border-radius: 8px; 
-            background: #444; z-index: 5;
+            background: #444; z-index: 10; pointer-events: auto;
         }
         
         .hidden { display: none !important; }
@@ -94,13 +101,13 @@
         
         <div id="startMenu" class="overlay">
             <h1 style="color: #00d4ff; font-size: 40px; margin-bottom: 0;">DEIVE ABRAÃO</h1>
-            <p>Use o analógico para mover e os botões para agir</p>
-            <button class="menu-btn" onclick="startGame()">INICIAR JOGO</button>
+            <p>Mova e use as ações simultaneamente!</p>
+            <button class="menu-btn" onclick="startGame()">JOGAR AGORA</button>
         </div>
 
         <div id="pauseMenu" class="overlay hidden">
             <h1>PAUSADO</h1>
-            <button class="menu-btn" onclick="togglePause()">RETOMAR</button>
+            <button class="menu-btn" onclick="togglePause()">VOLTAR</button>
         </div>
     </div>
 
@@ -118,8 +125,7 @@
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-        canvas.width = 800;
-        canvas.height = 400;
+        canvas.width = 800; canvas.height = 400;
 
         let score = 0, kills = 0, frames = 0, timeRemaining = 10;
         let gameActive = false, gamePaused = false, flightMode = false;
@@ -130,24 +136,18 @@
             dy: 0, jumpForce: 13, gravity: 0.65, grounded: false, speed: 7,
             draw() {
                 const skin = "#FFDBAC";
-                // Braços (agora com movimento leve)
+                // Braços
                 ctx.fillStyle = skin; 
-                ctx.fillRect(this.x - 6, this.y + 35, 10, 25); // Esq
-                ctx.fillRect(this.x + 36, this.y + 35, 10, 25); // Dir
-                
-                // Cabeça
+                ctx.fillRect(this.x - 6, this.y + 35, 10, 25);
+                ctx.fillRect(this.x + 36, this.y + 35, 10, 25);
+                // Cabeça e Corpo
                 ctx.fillStyle = "#000"; ctx.fillRect(this.x + 5, this.y, 30, 10);
                 ctx.fillStyle = skin; ctx.fillRect(this.x + 5, this.y + 5, 30, 25);
-                
-                // Rosto
-                ctx.fillStyle = "white"; ctx.fillRect(this.x + 10, this.y + 12, 6, 6); ctx.fillRect(this.x + 24, this.y + 12, 6, 6);
-                ctx.fillStyle = "black"; ctx.fillRect(this.x + 12, this.y + 14, 3, 3); ctx.fillRect(this.x + 26, this.y + 14, 3, 3);
-                
-                // Corpo e Roupa
                 ctx.fillStyle = "#0000FF"; ctx.fillRect(this.x + 8, this.y + 30, 24, 30);
-                const colors = ["#ff0000", "#ffff00", "#00ff00", "#ff00ff"];
-                for(let i=0; i<4; i++) { ctx.fillStyle = colors[i]; ctx.fillRect(this.x + 8, this.y + 60 + (i*4), 24, 4); }
-                
+                // Calça Arco-íris
+                ["#ff0000", "#ffff00", "#00ff00", "#ff00ff"].forEach((c, i) => {
+                    ctx.fillStyle = c; ctx.fillRect(this.x + 8, this.y + 60 + (i*4), 24, 4);
+                });
                 // Pernas
                 ctx.fillStyle = skin; ctx.fillRect(this.x + 6, this.y + 76, 12, 14); ctx.fillRect(this.x + 22, this.y + 76, 12, 14);
                 ctx.fillStyle = "#333"; ctx.fillRect(this.x + 4, this.y + 88, 14, 5); ctx.fillRect(this.x + 22, this.y + 88, 14, 5);
@@ -159,7 +159,6 @@
             draw() {
                 if(!this.alive) return;
                 ctx.fillStyle = "#333"; ctx.fillRect(this.x, this.y, this.w, this.h);
-                ctx.fillStyle = "black"; ctx.fillRect(this.x, this.y - 10, this.w, 5);
                 ctx.fillStyle = "red"; ctx.fillRect(this.x, this.y - 10, (this.health/100)*this.w, 5);
             }
         };
@@ -178,70 +177,49 @@
             document.getElementById('pauseMenu').classList.toggle('hidden', !gamePaused);
         }
 
-        function drawHUD() {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(0, 0, canvas.width, 40);
-            ctx.fillStyle = "white"; ctx.font = "bold 15px Arial";
-            ctx.textAlign = "left";
-            ctx.fillText(`MODO: ${flightMode ? 'VOO' : 'TERRA'} (${timeRemaining}s)`, 20, 25);
-            ctx.textAlign = "center";
-            ctx.fillText(`KILLS: ${kills}/3`, canvas.width/2, 25);
-            ctx.textAlign = "right";
-            ctx.fillText(`PONTOS: ${score}`, canvas.width - 20, 25);
-        }
-
         function loop() {
-            if (gameActive && !gamePaused) {
-                update();
-            }
+            if (gameActive && !gamePaused) update();
             requestAnimationFrame(loop);
         }
 
         function update() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             if (frames % 60 === 0) {
                 timeRemaining--;
                 if (timeRemaining < 0) {
-                    flightMode = !flightMode;
-                    timeRemaining = 10;
-                    obstacles = [];
+                    flightMode = !flightMode; timeRemaining = 10; obstacles = [];
                     canvas.style.backgroundColor = flightMode ? "#00BFFF" : "#4682B4";
                 }
             }
 
-            // Movimentação
+            // Movimento
             if (moveState.Left) deive.x -= deive.speed;
             if (moveState.Right) deive.x += deive.speed;
-            
             if (flightMode) {
                 if (moveState.Up) deive.y -= deive.speed;
                 if (moveState.Down) deive.y += deive.speed;
             } else {
-                deive.dy += deive.gravity;
-                deive.y += deive.dy;
+                deive.dy += deive.gravity; deive.y += deive.dy;
                 if (deive.y > 300) { deive.y = 300; deive.dy = 0; deive.grounded = true; }
             }
-
             deive.x = Math.max(0, Math.min(canvas.width - deive.width, deive.x));
             deive.y = Math.max(40, Math.min(canvas.height - deive.height, deive.y));
 
-            // Inimigo
+            // Lógica de Inimigos e Obstáculos (Simplificada para performance)
             if (enemy.alive) {
-                enemy.x += 4 * enemy.dir;
-                if (enemy.x > 700 || enemy.x < 100) enemy.dir *= -1;
+                enemy.x += 4 * enemy.dir; if (enemy.x > 700 || enemy.x < 100) enemy.dir *= -1;
                 enemy.draw();
                 if (frames % 120 === 100) enemyAttacks.push({ x: enemy.x + 35, y: enemy.y + 35, vx: -6, vy: (deive.y - enemy.y)/50 });
             } else if (frames % 180 === 0) { enemy.alive = true; enemy.health = 100; }
 
-            // Obstáculos
             if (!flightMode && frames % 100 === 0) obstacles.push({ x: canvas.width, y: 330, w: 30, h: 60 });
+            
             obstacles.forEach((o, i) => {
                 o.x -= 6; ctx.fillStyle = "#222"; ctx.fillRect(o.x, o.y, o.w, o.h);
                 if (deive.x < o.x + o.w && deive.x + deive.width > o.x && deive.y < o.y + o.h && deive.y + deive.height > o.y) gameOver();
                 if (o.x < -30) obstacles.splice(i, 1);
             });
 
-            // Tiros do Inimigo
             enemyAttacks.forEach((a, i) => {
                 a.x += a.vx; a.y += a.vy;
                 ctx.fillStyle = "#ff00ff"; ctx.beginPath(); ctx.arc(a.x, a.y, 8, 0, Math.PI*2); ctx.fill();
@@ -249,7 +227,6 @@
                 if (a.x < 0 || a.x > 800) enemyAttacks.splice(i, 1);
             });
 
-            // Tiros do Deive
             deivePowers.forEach((p, i) => {
                 p.x += 12; ctx.fillStyle = "#00ffff"; ctx.fillRect(p.x, p.y, 20, 6);
                 if (enemy.alive && p.x > enemy.x && p.x < enemy.x + enemy.w && p.y > enemy.y && p.y < enemy.y + enemy.h) {
@@ -264,101 +241,86 @@
             frames++;
         }
 
-        function gameOver() {
-            gameActive = false;
-            ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0,0,canvas.width, canvas.height);
-            ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.font = "bold 30px Arial";
-            ctx.fillText("FIM DE JOGO", canvas.width/2, canvas.height/2);
-            setTimeout(() => location.reload(), 2000);
-        }
+        function gameOver() { gameActive = false; location.reload(); }
+        function showVictory() { gameActive = false; alert("VITÓRIA!"); location.reload(); }
 
-        function showVictory() {
-            gameActive = false;
-            ctx.fillStyle = "rgba(0,0,0,0.9)"; ctx.fillRect(0,0,canvas.width, canvas.height);
-            ctx.fillStyle = "#ffd700"; ctx.textAlign = "center"; ctx.font = "bold 35px Arial";
-            ctx.fillText("VITÓRIA!", canvas.width/2, canvas.height/2);
-            setTimeout(() => location.reload(), 3000);
-        }
-
-        // --- CONTROLES CORRIGIDOS ---
+        // --- SISTEMA MULTI-TOUCH ROBUSTO ---
         const jContainer = document.getElementById('joystick-container');
         const jKnob = document.getElementById('joystick-knob');
-        let jActive = false;
+        let joystickTouchId = null; // Armazena qual dedo está no analógico
 
-        function updateJoystick(e) {
-            if (!jActive) return;
-            e.preventDefault();
+        function handleJoystickMove(touch) {
             const rect = jContainer.getBoundingClientRect();
-            const touch = e.touches ? e.touches[0] : e;
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
-            
             let dx = touch.clientX - centerX;
             let dy = touch.clientY - centerY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const dist = Math.sqrt(dx*dx + dy*dy);
             const maxRadius = 40;
 
-            if (distance > maxRadius) {
-                dx *= maxRadius / distance;
-                dy *= maxRadius / distance;
-            }
-
+            if (dist > maxRadius) { dx *= maxRadius/dist; dy *= maxRadius/dist; }
             jKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            jKnob.style.background = "#00d4ff";
 
-            // Sensibilidade do movimento
             moveState.Left = dx < -10;
             moveState.Right = dx > 10;
             moveState.Up = dy < -10;
             moveState.Down = dy > 10;
         }
 
-        function resetJoystick() {
-            jActive = false;
-            jKnob.style.transform = `translate(0, 0)`;
-            moveState.Left = moveState.Right = moveState.Up = moveState.Down = false;
-        }
-
-        // Eventos Touch
-        jContainer.addEventListener('touchstart', (e) => { jActive = true; updateJoystick(e); }, {passive: false});
-        window.addEventListener('touchmove', updateJoystick, {passive: false});
-        window.addEventListener('touchend', resetJoystick);
-
-        // Eventos Mouse (Para teste no PC)
-        jContainer.addEventListener('mousedown', () => jActive = true);
-        window.addEventListener('mousemove', updateJoystick);
-        window.addEventListener('mouseup', resetJoystick);
-
-        // Botões de Ação
-        const btnJump = document.getElementById('btnJump');
-        const btnShoot = document.getElementById('btnShoot');
-
-        const handleJump = (e) => {
+        jContainer.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (gameActive && !gamePaused) {
-                if (!flightMode && deive.grounded) {
-                    deive.dy = -deive.jumpForce;
-                    deive.grounded = false;
+            // Pega o ID do toque que começou no joystick
+            const touch = e.changedTouches[0];
+            joystickTouchId = touch.identifier;
+            handleJoystickMove(touch);
+        }, {passive: false});
+
+        window.addEventListener('touchmove', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) {
+                    handleJoystickMove(e.changedTouches[i]);
+                }
+            }
+        }, {passive: false});
+
+        const endJoystick = (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) {
+                    joystickTouchId = null;
+                    jKnob.style.transform = `translate(0, 0)`;
+                    jKnob.style.background = "#fff";
+                    moveState.Left = moveState.Right = moveState.Up = moveState.Down = false;
                 }
             }
         };
 
-        const handleShoot = (e) => {
-            e.preventDefault();
-            if (gameActive && !gamePaused) {
-                deivePowers.push({ x: deive.x + 30, y: deive.y + 40 });
+        window.addEventListener('touchend', endJoystick);
+        window.addEventListener('touchcancel', endJoystick);
+
+        // BOTÕES DE AÇÃO (Pulo e Tiro)
+        const setupActionButton = (id, actionFn) => {
+            const el = document.getElementById(id);
+            const trigger = (e) => {
+                e.preventDefault();
+                if (gameActive && !gamePaused) actionFn();
+            };
+            el.addEventListener('touchstart', trigger, {passive: false});
+            el.addEventListener('mousedown', trigger);
+        };
+
+        setupActionButton('btnJump', () => {
+            if (!flightMode && deive.grounded) {
+                deive.dy = -deive.jumpForce;
+                deive.grounded = false;
             }
-        };
+        });
 
-        btnJump.addEventListener('touchstart', handleJump, {passive: false});
-        btnJump.addEventListener('mousedown', handleJump);
-        
-        btnShoot.addEventListener('touchstart', handleShoot, {passive: false});
-        btnShoot.addEventListener('mousedown', handleShoot);
+        setupActionButton('btnShoot', () => {
+            deivePowers.push({ x: deive.x + 30, y: deive.y + 40 });
+        });
 
-        document.getElementById('btnPause').onclick = (e) => {
-            e.stopPropagation();
-            togglePause();
-        };
+        document.getElementById('btnPause').onclick = (e) => { togglePause(); };
 
     </script>
 </body>
