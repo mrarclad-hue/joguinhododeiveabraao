@@ -19,59 +19,110 @@
             border: 2px solid #333;
             display: block;
         }
-        #controls {
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
             display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 10;
+        }
+        #controls {
+            display: flex; justify-content: space-between;
             width: 100%; max-width: 800px;
-            background: #111; padding: 15px;
-            box-sizing: border-box;
+            padding: 20px; box-sizing: border-box;
+            align-items: center;
         }
-        .row { display: flex; justify-content: center; gap: 10px; margin-bottom: 8px; }
+        /* Estilo do Analógico */
+        #joystick-container {
+            width: 110px; height: 110px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            position: relative;
+            touch-action: none;
+            transition: transform 0.1s;
+        }
+        #joystick-container:active { transform: scale(1.05); border-color: #00d4ff; }
+        
+        #joystick-knob {
+            width: 50px; height: 50px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute; top: 30px; left: 30px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        /* Estilo dos Botões com Animação */
+        .action-btns { display: flex; gap: 20px; }
         .btn {
-            background: #2a2a2a; border: 2px solid #444;
-            color: white; padding: 18px;
-            text-align: center; border-radius: 12px;
-            flex: 1; font-weight: bold; font-size: 18px;
-            user-select: none; -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            background: #2a2a2a; border: 3px solid #444;
+            color: white; width: 70px; height: 70px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 14px;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 0 #000;
         }
-        .btn:active { background: #555; transform: scale(0.95); }
-        .btn-jump { background: #0084ff; border-color: #00d4ff; flex: 2; }
-        .btn-shoot { background: #ff4757; border-color: #ff6b81; flex: 1.5; }
-        .btn-dir { background: #333; font-size: 22px; }
+        .btn:active {
+            transform: scale(0.85) translateY(4px);
+            box-shadow: 0 0 0 #000;
+        }
+        .btn-jump { background: #0084ff; border-color: #00d4ff; }
+        .btn-shoot { background: #ff4757; border-color: #ff6b81; }
+        
+        .btn-pause { 
+            position: absolute; top: 10px; right: 10px; 
+            width: 45px; height: 45px; border-radius: 8px; 
+            background: #444; z-index: 5;
+        }
+        
+        .hidden { display: none !important; }
+        .menu-btn {
+            background: #0084ff; padding: 15px 40px;
+            border-radius: 10px; font-size: 24px; cursor: pointer; margin-top: 20px;
+            border: none; color: white; font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
+    <div style="position: relative;">
+        <canvas id="gameCanvas"></canvas>
+        <div id="btnPause" class="btn btn-pause hidden">II</div>
+        
+        <div id="startMenu" class="overlay">
+            <h1 style="color: #00d4ff; font-size: 40px; margin-bottom: 0;">DEIVE ABRAÃO</h1>
+            <p>Use o analógico para mover e os botões para agir</p>
+            <button class="menu-btn" onclick="startGame()">INICIAR JOGO</button>
+        </div>
+
+        <div id="pauseMenu" class="overlay hidden">
+            <h1>PAUSADO</h1>
+            <button class="menu-btn" onclick="togglePause()">RETOMAR</button>
+        </div>
+    </div>
 
     <div id="controls">
-        <div class="row">
-            <div class="btn btn-jump" id="btnJump">PULAR / REINICIAR</div>
-            <div class="btn btn-shoot" id="btnShoot">ATIRAR</div>
+        <div id="joystick-container">
+            <div id="joystick-knob"></div>
         </div>
-        <div class="row">
-            <div class="btn btn-dir" id="btnLeft">◀</div>
-            <div class="btn btn-dir" id="btnUp">▲</div>
-            <div class="btn btn-dir" id="btnDown">▼</div>
-            <div class="btn btn-dir" id="btnRight">▶</div>
+        
+        <div class="action-btns">
+            <div class="btn btn-shoot" id="btnShoot">TIRO</div>
+            <div class="btn btn-jump" id="btnJump">PULO</div>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-
         canvas.width = 800;
         canvas.height = 400;
 
-        let score = 0;
-        let kills = 0;
-        let gameActive = true;
-        let gameWon = false;
-        let frames = 0;
-        let flightMode = false;
-        let timeRemaining = 10;
-        
+        let score = 0, kills = 0, frames = 0, timeRemaining = 10;
+        let gameActive = false, gamePaused = false, flightMode = false;
         const moveState = { Up: false, Down: false, Left: false, Right: false };
 
         const deive = {
@@ -79,15 +130,26 @@
             dy: 0, jumpForce: 13, gravity: 0.65, grounded: false, speed: 7,
             draw() {
                 const skin = "#FFDBAC";
+                // Braços (agora com movimento leve)
+                ctx.fillStyle = skin; 
+                ctx.fillRect(this.x - 6, this.y + 35, 10, 25); // Esq
+                ctx.fillRect(this.x + 36, this.y + 35, 10, 25); // Dir
+                
+                // Cabeça
                 ctx.fillStyle = "#000"; ctx.fillRect(this.x + 5, this.y, 30, 10);
                 ctx.fillStyle = skin; ctx.fillRect(this.x + 5, this.y + 5, 30, 25);
+                
+                // Rosto
                 ctx.fillStyle = "white"; ctx.fillRect(this.x + 10, this.y + 12, 6, 6); ctx.fillRect(this.x + 24, this.y + 12, 6, 6);
                 ctx.fillStyle = "black"; ctx.fillRect(this.x + 12, this.y + 14, 3, 3); ctx.fillRect(this.x + 26, this.y + 14, 3, 3);
-                ctx.fillStyle = "#800000"; ctx.fillRect(this.x + 15, this.y + 24, 10, 2);
-                ctx.fillStyle = "#0000FF"; ctx.fillRect(this.x + 8, this.y + 30, 24, 25);
+                
+                // Corpo e Roupa
+                ctx.fillStyle = "#0000FF"; ctx.fillRect(this.x + 8, this.y + 30, 24, 30);
                 const colors = ["#ff0000", "#ffff00", "#00ff00", "#ff00ff"];
-                for(let i=0; i<4; i++) { ctx.fillStyle = colors[i]; ctx.fillRect(this.x + 8, this.y + 55 + (i*4), 24, 4); }
-                ctx.fillStyle = skin; ctx.fillRect(this.x + 6, this.y + 70, 12, 20); ctx.fillRect(this.x + 22, this.y + 70, 12, 20);
+                for(let i=0; i<4; i++) { ctx.fillStyle = colors[i]; ctx.fillRect(this.x + 8, this.y + 60 + (i*4), 24, 4); }
+                
+                // Pernas
+                ctx.fillStyle = skin; ctx.fillRect(this.x + 6, this.y + 76, 12, 14); ctx.fillRect(this.x + 22, this.y + 76, 12, 14);
                 ctx.fillStyle = "#333"; ctx.fillRect(this.x + 4, this.y + 88, 14, 5); ctx.fillRect(this.x + 22, this.y + 88, 14, 5);
             }
         };
@@ -97,44 +159,44 @@
             draw() {
                 if(!this.alive) return;
                 ctx.fillStyle = "#333"; ctx.fillRect(this.x, this.y, this.w, this.h);
-                if(frames % 120 < 100) {
-                    ctx.fillStyle = "white"; ctx.fillRect(this.x + 25, this.y + 10, 20, 15);
-                    ctx.fillStyle = "red"; ctx.fillRect(this.x + 32, this.y + 15, 6, 6);
-                }
                 ctx.fillStyle = "black"; ctx.fillRect(this.x, this.y - 10, this.w, 5);
                 ctx.fillStyle = "red"; ctx.fillRect(this.x, this.y - 10, (this.health/100)*this.w, 5);
             }
         };
 
-        const obstacles = [];
-        const deivePowers = [];
-        const enemyAttacks = [];
+        let obstacles = [], deivePowers = [], enemyAttacks = [];
+
+        function startGame() {
+            document.getElementById('startMenu').classList.add('hidden');
+            document.getElementById('btnPause').classList.remove('hidden');
+            gameActive = true;
+            loop();
+        }
+
+        function togglePause() {
+            gamePaused = !gamePaused;
+            document.getElementById('pauseMenu').classList.toggle('hidden', !gamePaused);
+        }
 
         function drawHUD() {
-            // Barra de fundo do HUD
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fillRect(0, 0, canvas.width, 40);
-
-            ctx.fillStyle = "white";
-            ctx.font = "bold 18px Arial";
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; ctx.fillRect(0, 0, canvas.width, 40);
+            ctx.fillStyle = "white"; ctx.font = "bold 15px Arial";
             ctx.textAlign = "left";
-
-            // Tempo para o próximo evento
-            ctx.fillStyle = "#00d4ff";
-            ctx.fillText(`⏱️ EVENTO EM: ${timeRemaining}s`, 20, 27);
-
-            // Contador de Mortes
-            ctx.fillStyle = "#ff4757";
-            ctx.fillText(`💀 MORTES: ${kills}/3`, 320, 27);
-
-            // Pontuação
-            ctx.fillStyle = "#ffeb3b";
+            ctx.fillText(`MODO: ${flightMode ? 'VOO' : 'TERRA'} (${timeRemaining}s)`, 20, 25);
+            ctx.textAlign = "center";
+            ctx.fillText(`KILLS: ${kills}/3`, canvas.width/2, 25);
             ctx.textAlign = "right";
-            ctx.fillText(`⭐ PONTOS: ${score}`, canvas.width - 20, 27);
+            ctx.fillText(`PONTOS: ${score}`, canvas.width - 20, 25);
+        }
+
+        function loop() {
+            if (gameActive && !gamePaused) {
+                update();
+            }
+            requestAnimationFrame(loop);
         }
 
         function update() {
-            if (!gameActive) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (frames % 60 === 0) {
@@ -142,110 +204,162 @@
                 if (timeRemaining < 0) {
                     flightMode = !flightMode;
                     timeRemaining = 10;
-                    obstacles.length = 0;
+                    obstacles = [];
                     canvas.style.backgroundColor = flightMode ? "#00BFFF" : "#4682B4";
                 }
             }
 
-            if (enemy.alive) {
-                enemy.x += 4 * enemy.dir;
-                if (enemy.x > 700 || enemy.x < 100) enemy.dir *= -1;
-                enemy.draw();
-                if (frames % 120 === 101) {
-                    enemyAttacks.push({ x: enemy.x + 35, y: enemy.y + 35, vx: -7, vy: (deive.y - enemy.y)/40 });
-                }
-            } else if (frames % 120 === 0) { enemy.alive = true; enemy.health = 100; }
-
+            // Movimentação
+            if (moveState.Left) deive.x -= deive.speed;
+            if (moveState.Right) deive.x += deive.speed;
+            
             if (flightMode) {
                 if (moveState.Up) deive.y -= deive.speed;
                 if (moveState.Down) deive.y += deive.speed;
-                if (moveState.Left) deive.x -= deive.speed;
-                if (moveState.Right) deive.x += deive.speed;
-                deive.y = Math.max(40, Math.min(canvas.height - 90, deive.y));
-                deive.x = Math.max(0, Math.min(canvas.width - 40, deive.x));
             } else {
                 deive.dy += deive.gravity;
                 deive.y += deive.dy;
                 if (deive.y > 300) { deive.y = 300; deive.dy = 0; deive.grounded = true; }
             }
-            deive.draw();
 
+            deive.x = Math.max(0, Math.min(canvas.width - deive.width, deive.x));
+            deive.y = Math.max(40, Math.min(canvas.height - deive.height, deive.y));
+
+            // Inimigo
+            if (enemy.alive) {
+                enemy.x += 4 * enemy.dir;
+                if (enemy.x > 700 || enemy.x < 100) enemy.dir *= -1;
+                enemy.draw();
+                if (frames % 120 === 100) enemyAttacks.push({ x: enemy.x + 35, y: enemy.y + 35, vx: -6, vy: (deive.y - enemy.y)/50 });
+            } else if (frames % 180 === 0) { enemy.alive = true; enemy.health = 100; }
+
+            // Obstáculos
             if (!flightMode && frames % 100 === 0) obstacles.push({ x: canvas.width, y: 330, w: 30, h: 60 });
             obstacles.forEach((o, i) => {
-                o.x -= 6; ctx.fillStyle = "black"; ctx.fillRect(o.x, o.y, o.w, o.h);
+                o.x -= 6; ctx.fillStyle = "#222"; ctx.fillRect(o.x, o.y, o.w, o.h);
                 if (deive.x < o.x + o.w && deive.x + deive.width > o.x && deive.y < o.y + o.h && deive.y + deive.height > o.y) gameOver();
                 if (o.x < -30) obstacles.splice(i, 1);
             });
 
+            // Tiros do Inimigo
             enemyAttacks.forEach((a, i) => {
                 a.x += a.vx; a.y += a.vy;
-                ctx.fillStyle = "#ff00ff"; ctx.beginPath(); ctx.arc(a.x, a.y, 10, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "#ff00ff"; ctx.beginPath(); ctx.arc(a.x, a.y, 8, 0, Math.PI*2); ctx.fill();
                 if (a.x > deive.x && a.x < deive.x + deive.width && a.y > deive.y && a.y < deive.y + deive.height) gameOver();
-                if (a.x < 0) enemyAttacks.splice(i, 1);
+                if (a.x < 0 || a.x > 800) enemyAttacks.splice(i, 1);
             });
 
+            // Tiros do Deive
             deivePowers.forEach((p, i) => {
                 p.x += 12; ctx.fillStyle = "#00ffff"; ctx.fillRect(p.x, p.y, 20, 6);
                 if (enemy.alive && p.x > enemy.x && p.x < enemy.x + enemy.w && p.y > enemy.y && p.y < enemy.y + enemy.h) {
                     deivePowers.splice(i, 1); enemy.health -= 25;
-                    if (enemy.health <= 0) { 
-                        enemy.alive = false; kills++; score += 500;
-                        if (kills >= 3) showVictory();
-                    }
+                    if (enemy.health <= 0) { enemy.alive = false; kills++; score += 500; if (kills >= 3) showVictory(); }
                 }
                 if (p.x > canvas.width) deivePowers.splice(i, 1);
             });
 
+            deive.draw();
             drawHUD();
             frames++;
-            requestAnimationFrame(update);
-        }
-
-        function showVictory() {
-            gameActive = false; gameWon = true;
-            ctx.fillStyle = "rgba(0,0,0,0.9)"; ctx.fillRect(0,0,canvas.width, canvas.height);
-            ctx.fillStyle = "#ffd700"; ctx.textAlign = "center"; ctx.font = "bold 35px Arial";
-            ctx.fillText("PARABÉNS,", canvas.width/2, canvas.height/2 - 20);
-            ctx.fillText("DEIVE ABRAÃO", canvas.width/2, canvas.height/2 + 30);
         }
 
         function gameOver() {
             gameActive = false;
-            ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,canvas.width, canvas.height);
-            ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.font = "bold 25px Arial";
+            ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0,0,canvas.width, canvas.height);
+            ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.font = "bold 30px Arial";
             ctx.fillText("FIM DE JOGO", canvas.width/2, canvas.height/2);
-            ctx.font = "16px Arial"; ctx.fillText("Toque em REINICIAR", canvas.width/2, canvas.height/2 + 40);
+            setTimeout(() => location.reload(), 2000);
         }
 
-        function setupButton(id, action) {
-            const el = document.getElementById(id);
-            const start = (e) => {
-                e.preventDefault();
-                if (action === 'Jump') {
-                    if (gameActive && deive.grounded && !flightMode) { deive.dy = -deive.jumpForce; deive.grounded = false; }
-                    else if (!gameActive) location.reload();
-                } else if (action === 'Shoot') {
-                    if (flightMode && gameActive) deivePowers.push({ x: deive.x + 40, y: deive.y + 40 });
-                } else moveState[action] = true;
-            };
-            const end = (e) => {
-                e.preventDefault();
-                if (action !== 'Jump' && action !== 'Shoot') moveState[action] = false;
-            };
-            el.addEventListener('touchstart', start, {passive: false});
-            el.addEventListener('touchend', end, {passive: false});
-            el.addEventListener('mousedown', start);
-            el.addEventListener('mouseup', end);
+        function showVictory() {
+            gameActive = false;
+            ctx.fillStyle = "rgba(0,0,0,0.9)"; ctx.fillRect(0,0,canvas.width, canvas.height);
+            ctx.fillStyle = "#ffd700"; ctx.textAlign = "center"; ctx.font = "bold 35px Arial";
+            ctx.fillText("VITÓRIA!", canvas.width/2, canvas.height/2);
+            setTimeout(() => location.reload(), 3000);
         }
 
-        setupButton('btnJump', 'Jump');
-        setupButton('btnUp', 'Up');
-        setupButton('btnDown', 'Down');
-        setupButton('btnLeft', 'Left');
-        setupButton('btnRight', 'Right');
-        setupButton('btnShoot', 'Shoot');
+        // --- CONTROLES CORRIGIDOS ---
+        const jContainer = document.getElementById('joystick-container');
+        const jKnob = document.getElementById('joystick-knob');
+        let jActive = false;
 
-        update();
+        function updateJoystick(e) {
+            if (!jActive) return;
+            e.preventDefault();
+            const rect = jContainer.getBoundingClientRect();
+            const touch = e.touches ? e.touches[0] : e;
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const maxRadius = 40;
+
+            if (distance > maxRadius) {
+                dx *= maxRadius / distance;
+                dy *= maxRadius / distance;
+            }
+
+            jKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+
+            // Sensibilidade do movimento
+            moveState.Left = dx < -10;
+            moveState.Right = dx > 10;
+            moveState.Up = dy < -10;
+            moveState.Down = dy > 10;
+        }
+
+        function resetJoystick() {
+            jActive = false;
+            jKnob.style.transform = `translate(0, 0)`;
+            moveState.Left = moveState.Right = moveState.Up = moveState.Down = false;
+        }
+
+        // Eventos Touch
+        jContainer.addEventListener('touchstart', (e) => { jActive = true; updateJoystick(e); }, {passive: false});
+        window.addEventListener('touchmove', updateJoystick, {passive: false});
+        window.addEventListener('touchend', resetJoystick);
+
+        // Eventos Mouse (Para teste no PC)
+        jContainer.addEventListener('mousedown', () => jActive = true);
+        window.addEventListener('mousemove', updateJoystick);
+        window.addEventListener('mouseup', resetJoystick);
+
+        // Botões de Ação
+        const btnJump = document.getElementById('btnJump');
+        const btnShoot = document.getElementById('btnShoot');
+
+        const handleJump = (e) => {
+            e.preventDefault();
+            if (gameActive && !gamePaused) {
+                if (!flightMode && deive.grounded) {
+                    deive.dy = -deive.jumpForce;
+                    deive.grounded = false;
+                }
+            }
+        };
+
+        const handleShoot = (e) => {
+            e.preventDefault();
+            if (gameActive && !gamePaused) {
+                deivePowers.push({ x: deive.x + 30, y: deive.y + 40 });
+            }
+        };
+
+        btnJump.addEventListener('touchstart', handleJump, {passive: false});
+        btnJump.addEventListener('mousedown', handleJump);
+        
+        btnShoot.addEventListener('touchstart', handleShoot, {passive: false});
+        btnShoot.addEventListener('mousedown', handleShoot);
+
+        document.getElementById('btnPause').onclick = (e) => {
+            e.stopPropagation();
+            togglePause();
+        };
+
     </script>
 </body>
 </html>
