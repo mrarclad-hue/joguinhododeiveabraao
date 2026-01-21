@@ -16,7 +16,6 @@
         #game-container { position: relative; border: 4px solid #333; line-height: 0; }
         canvas { background-color: #4682B4; max-width: 100%; height: auto; display: block; }
         
-        /* Telas de Overlay */
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85);
@@ -25,7 +24,6 @@
             z-index: 100; text-align: center;
         }
         
-        /* HUD e Pause */
         .btn-pause {
             position: absolute; top: 10px; right: 10px;
             width: 45px; height: 45px; background: #444;
@@ -34,14 +32,12 @@
             font-weight: bold; border: 2px solid #666;
         }
 
-        /* Controles */
         #ui-controls {
             display: flex; justify-content: space-between;
             width: 100%; max-width: 800px; padding: 20px;
             box-sizing: border-box; align-items: center;
         }
         
-        /* Joystick Digital */
         #joy-base {
             width: 120px; height: 120px; background: rgba(255,255,255,0.1);
             border: 3px solid rgba(255,255,255,0.3); border-radius: 50%;
@@ -52,10 +48,8 @@
             border-radius: 50%; position: absolute;
             top: 35px; left: 35px; pointer-events: none;
             box-shadow: 0 0 15px rgba(255,255,255,0.5);
-            transition: background 0.2s;
         }
 
-        /* Botões de Ação */
         .action-group { display: flex; gap: 20px; }
         .btn-action {
             width: 80px; height: 80px; border-radius: 50%;
@@ -84,13 +78,18 @@
 
         <div id="menuStart" class="overlay">
             <h1 style="color: #00d4ff; margin: 0;">DEIVE ABRAÃO</h1>
-            <p>Use o analógico para mover e os botões para lutar!</p>
+            <p>Mova o analógico e use os botões simultaneamente!</p>
             <button class="main-btn" onclick="initGame()">INICIAR</button>
         </div>
 
         <div id="menuPause" class="overlay hidden">
             <h1>PAUSADO</h1>
-            <button class="main-btn" onclick="togglePause()">CONTINUAR</button>
+            <button class="main-btn" onclick="togglePause()">VOLTAR</button>
+        </div>
+
+        <div id="screenEnd" class="overlay hidden" onclick="location.reload()">
+            <h1 id="endMessage" style="font-size: 40px;"></h1>
+            <p>Toque para reiniciar</p>
         </div>
     </div>
 
@@ -109,7 +108,6 @@
         const ctx = canvas.getContext("2d");
         canvas.width = 800; canvas.height = 400;
 
-        // Estado do Jogo
         let gameRunning = false;
         let paused = false;
         let frames = 0;
@@ -125,22 +123,15 @@
             grounded: false,
             draw() {
                 const skin = "#FFDBAC";
-                // Braços
                 ctx.fillStyle = skin;
-                ctx.fillRect(this.x - 8, this.y + 35, 10, 25); // Esq
-                ctx.fillRect(this.x + 38, this.y + 35, 10, 25); // Dir
-                // Cabeça
+                ctx.fillRect(this.x - 8, this.y + 35, 10, 25);
+                ctx.fillRect(this.x + 38, this.y + 35, 10, 25);
                 ctx.fillStyle = "#000"; ctx.fillRect(this.x + 5, this.y, 30, 10);
                 ctx.fillStyle = skin; ctx.fillRect(this.x + 5, this.y + 5, 30, 25);
-                // Olhos
                 ctx.fillStyle = "white"; ctx.fillRect(this.x + 10, this.y + 12, 6, 6); ctx.fillRect(this.x + 24, this.y + 12, 6, 6);
                 ctx.fillStyle = "black"; ctx.fillRect(this.x + 12, this.y + 14, 3, 3); ctx.fillRect(this.x + 26, this.y + 14, 3, 3);
-                // Camisa Azul
                 ctx.fillStyle = "#0000FF"; ctx.fillRect(this.x + 8, this.y + 30, 24, 30);
-                // Calça Arco-íris
-                const rainbow = ["#ff0000", "#ffff00", "#00ff00", "#ff00ff"];
-                rainbow.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(this.x + 8, this.y + 60 + (i*4), 24, 4); });
-                // Pernas
+                ["#ff0000", "#ffff00", "#00ff00", "#ff00ff"].forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(this.x + 8, this.y + 60 + (i*4), 24, 4); });
                 ctx.fillStyle = skin; ctx.fillRect(this.x + 6, this.y + 76, 12, 14); ctx.fillRect(this.x + 22, this.y + 76, 12, 14);
             }
         };
@@ -156,7 +147,6 @@
             draw() {
                 if(!this.active) return;
                 ctx.fillStyle = "#333"; ctx.fillRect(this.x, this.y, this.w, this.h);
-                // Barra HP
                 ctx.fillStyle = "black"; ctx.fillRect(this.x, this.y - 15, this.w, 8);
                 ctx.fillStyle = "red"; ctx.fillRect(this.x, this.y - 15, (this.hp/100)*this.w, 8);
             }
@@ -190,19 +180,14 @@
 
         function update() {
             frames++;
-            
-            // Troca de Modo (Voo/Terra)
             if (frames % 60 === 0) {
                 timeToSwitch--;
                 if(timeToSwitch <= 0) {
-                    flightMode = !flightMode;
-                    timeToSwitch = 10;
-                    obstacles = [];
+                    flightMode = !flightMode; timeToSwitch = 10; obstacles = [];
                     canvas.style.backgroundColor = flightMode ? "#00BFFF" : "#4682B4";
                 }
             }
 
-            // Movimento Deive
             if (keys.Left) deive.x -= deive.speed;
             if (keys.Right) deive.x += deive.speed;
 
@@ -210,39 +195,29 @@
                 if (keys.Up) deive.y -= deive.speed;
                 if (keys.Down) deive.y += deive.speed;
             } else {
-                deive.vy += deive.gravity;
-                deive.y += deive.vy;
-                if (deive.y > 300) {
-                    deive.y = 300; deive.vy = 0; deive.grounded = true;
-                }
+                deive.vy += deive.gravity; deive.y += deive.vy;
+                if (deive.y > 300) { deive.y = 300; deive.vy = 0; deive.grounded = true; }
             }
 
-            // Limites Tela
             deive.x = Math.max(0, Math.min(canvas.width - deive.w, deive.x));
             deive.y = Math.max(40, Math.min(canvas.height - deive.h, deive.y));
 
-            // Inimigo
             enemy.update();
             if(!enemy.active && frames % 200 === 0) { enemy.active = true; enemy.hp = 100; }
 
-            // Obstáculos (Plataformas verticais que andam)
-            if (!flightMode && frames % 90 === 0) {
-                obstacles.push({ x: canvas.width, y: 330, w: 30, h: 70 });
-            }
+            if (!flightMode && frames % 90 === 0) obstacles.push({ x: canvas.width, y: 330, w: 30, h: 70 });
+            
             obstacles.forEach((obs, i) => {
                 obs.x -= 6;
-                if (checkCol(deive, obs)) gameOver();
+                if (checkCol(deive, obs)) endGameState(false);
                 if (obs.x < -40) obstacles.splice(i, 1);
             });
 
-            // Projéteis
             projectiles.forEach((p, i) => {
                 p.x += p.vx; p.y += p.vy || 0;
                 if(p.type === 'enemy') {
-                    ctx.fillStyle = "magenta";
-                    if(checkCol(deive, {x: p.x-5, y: p.y-5, w: 10, h: 10})) gameOver();
+                    if(checkCol(deive, {x: p.x-5, y: p.y-5, w: 10, h: 10})) endGameState(false);
                 } else {
-                    ctx.fillStyle = "cyan";
                     if(enemy.active && checkCol(enemy, {x: p.x, y: p.y, w: 20, h: 6})) {
                         enemy.hp -= 20; projectiles.splice(i, 1);
                         if(enemy.hp <= 0) { enemy.active = false; kills++; score += 500; }
@@ -251,25 +226,19 @@
                 if(p.x < 0 || p.x > 800) projectiles.splice(i, 1);
             });
             
-            if(kills >= 3) victory();
+            if(kills >= 3) endGameState(true);
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Chão
             ctx.fillStyle = "#222"; ctx.fillRect(0, 390, canvas.width, 10);
-            
             obstacles.forEach(obs => { ctx.fillStyle = "#333"; ctx.fillRect(obs.x, obs.y, obs.w, obs.h); });
             projectiles.forEach(p => {
+                ctx.fillStyle = p.type === 'enemy' ? "magenta" : "cyan";
                 if(p.type === 'enemy') { ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill(); }
                 else { ctx.fillRect(p.x, p.y, 20, 6); }
             });
-
-            enemy.draw();
-            deive.draw();
-
-            // HUD
+            enemy.draw(); deive.draw();
             ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0,0,canvas.width, 40);
             ctx.fillStyle = "white"; ctx.font = "bold 16px Arial";
             ctx.fillText(`MODO: ${flightMode ? 'VOO' : 'TERRA'} (${timeToSwitch}s)`, 20, 25);
@@ -281,10 +250,21 @@
             return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
         }
 
-        function gameOver() { gameRunning = false; alert("GAME OVER!"); location.reload(); }
-        function victory() { gameRunning = false; alert("VOCÊ VENCEU!"); location.reload(); }
+        function endGameState(win) {
+            gameRunning = false;
+            const screen = document.getElementById("screenEnd");
+            const msg = document.getElementById("endMessage");
+            screen.classList.remove("hidden");
+            if(win) {
+                msg.innerText = "PARABÉNS, VOCÊ GANHOU!";
+                msg.style.color = "#00d4ff";
+            } else {
+                msg.innerText = "GAME OVER";
+                msg.style.color = "#ff4757";
+            }
+        }
 
-        // --- CONTROLES (JOYSTICK E BOTÕES) ---
+        // --- CONTROLES ---
         const joyBase = document.getElementById("joy-base");
         const joyStick = document.getElementById("joy-stick");
         let joyId = null;
@@ -293,30 +273,20 @@
             if (joyId === null) return;
             const touch = Array.from(e.changedTouches).find(t => t.identifier === joyId);
             if (!touch) return;
-
             const rect = joyBase.getBoundingClientRect();
             const centerX = rect.left + rect.width/2;
             const centerY = rect.top + rect.height/2;
-            let dx = touch.clientX - centerX;
-            let dy = touch.clientY - centerY;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            const max = 40;
-
+            let dx = touch.clientX - centerX, dy = touch.clientY - centerY;
+            const dist = Math.sqrt(dx*dx + dy*dy), max = 40;
             if (dist > max) { dx *= max/dist; dy *= max/dist; }
             joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
-
-            keys.Left = dx < -15;
-            keys.Right = dx > 15;
-            keys.Up = dy < -15;
-            keys.Down = dy > 15;
+            keys.Left = dx < -15; keys.Right = dx > 15; keys.Up = dy < -15; keys.Down = dy > 15;
         }
 
         joyBase.addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            joyId = e.changedTouches[0].identifier;
-            joyStick.style.background = "#00d4ff";
-            handleJoy(e);
-        });
+            e.preventDefault(); joyId = e.changedTouches[0].identifier;
+            joyStick.style.background = "#00d4ff"; handleJoy(e);
+        }, {passive: false});
 
         window.addEventListener("touchmove", handleJoy, {passive: false});
         
@@ -324,31 +294,18 @@
             if (joyId === null) return;
             const touch = Array.from(e.changedTouches).find(t => t.identifier === joyId);
             if (touch) {
-                joyId = null;
-                joyStick.style.transform = "translate(0,0)";
-                joyStick.style.background = "#fff";
-                keys.Left = keys.Right = keys.Up = keys.Down = false;
+                joyId = null; joyStick.style.transform = "translate(0,0)";
+                joyStick.style.background = "#fff"; keys.Left = keys.Right = keys.Up = keys.Down = false;
             }
         };
 
         window.addEventListener("touchend", resetJoy);
-        window.addEventListener("touchcancel", resetJoy);
-
-        // Botões de Ação
         document.getElementById("btnJump").addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            if (gameRunning && !paused && !flightMode && deive.grounded) {
-                deive.vy = deive.jumpForce; deive.grounded = false;
-            }
+            e.preventDefault(); if (gameRunning && !paused && !flightMode && deive.grounded) { deive.vy = deive.jumpForce; deive.grounded = false; }
         });
-
         document.getElementById("btnShoot").addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            if (gameRunning && !paused) {
-                projectiles.push({x: deive.x + 40, y: deive.y + 40, vx: 10, vy: 0, type: 'player'});
-            }
+            e.preventDefault(); if (gameRunning && !paused) projectiles.push({x: deive.x + 40, y: deive.y + 40, vx: 10, vy: 0, type: 'player'});
         });
-
     </script>
 </body>
 </html>
