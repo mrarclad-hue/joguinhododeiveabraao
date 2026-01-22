@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Deive Abraão - Mobile No-Select</title>
+    <title>Deive Abraão - Persist Fullscreen</title>
     <style>
-        /* Desativa seleção de texto em todo o corpo do jogo */
         * {
-            -webkit-user-select: none;  /* Safari */
-            -ms-user-select: none;      /* IE 10 e 11 */
-            user-select: none;          /* Padrão (Chrome, Firefox, Edge) */
-            -webkit-tap-highlight-color: transparent; /* Remove o brilho ao tocar em links no mobile */
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -29,14 +28,12 @@
             display: flex;
             flex-direction: column;
             background: #4682B4;
-            overflow: visible;
         }
 
         canvas {
             width: 100%;
             height: 100%;
             display: block;
-            cursor: default;
         }
         
         #mobileControls {
@@ -55,7 +52,9 @@
             transition: opacity 0.3s;
         }
         
-        #game-container:fullscreen #mobileControls {
+        /* Ajuste para quando o container estiver em Fullscreen */
+        #game-container:fullscreen #mobileControls,
+        #game-container:-webkit-full-screen #mobileControls {
             bottom: 20px;
         }
 
@@ -79,7 +78,6 @@
             display: flex; align-items: center; justify-content: center;
             font-weight: bold; font-size: 11px; background: rgba(0, 0, 0, 0.6);
             border: 2px solid #fff; color: white;
-            cursor: pointer;
         }
 
         .top-bar {
@@ -90,7 +88,7 @@
             width: 45px; height: 45px; background: rgba(0,0,0,0.7);
             border-radius: 5px; display: flex; align-items: center;
             justify-content: center; cursor: pointer; border: 1px solid #fff;
-            font-size: 20px; color: white;
+            font-size: 20px;
         }
 
         .overlay {
@@ -109,12 +107,15 @@
             margin-top: 20px; cursor: pointer; font-weight: bold;
         }
 
-        :fullscreen #game-container {
+        :fullscreen #game-container,
+        :-webkit-full-screen #game-container {
             width: 100vw; height: 100vh; max-width: none; aspect-ratio: auto;
         }
     </style>
 </head>
-<body oncontextmenu="return false;"> <div id="game-container">
+<body oncontextmenu="return false;">
+
+    <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         
         <div class="top-bar">
@@ -141,9 +142,9 @@
             <button class="main-btn" onclick="togglePause()">RETOMAR</button>
         </div>
 
-        <div id="screenEnd" class="overlay hidden" onclick="location.reload()">
+        <div id="screenEnd" class="overlay hidden">
             <h1 id="endMessage" style="font-size: 35px;"></h1>
-            <p>Toque para reiniciar</p>
+            <button class="main-btn" onclick="resetGame()">JOGAR NOVAMENTE</button>
         </div>
     </div>
 
@@ -155,16 +156,12 @@
         
         canvas.width = 800; canvas.height = 400;
 
-        if (isMobile) {
-            document.getElementById('instructionText').innerText = "Use o analógico e os botões.";
-        }
-
         let gameRunning = false, paused = false, frames = 0, kills = 0, timeToSwitch = 10, flightMode = false;
         const keys = { Left: false, Right: false, Up: false, Down: false };
         let projectiles = [], obstacles = [];
 
         function toggleRotate() {
-            if (!document.fullscreenElement) {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 if (container.requestFullscreen) container.requestFullscreen();
                 else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
                 if (screen.orientation && screen.orientation.lock) {
@@ -172,12 +169,16 @@
                 }
             } else {
                 if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
             }
         }
 
         const deive = {
             x: 100, y: 300, w: 40, h: 90, vx: 0, vy: 0, speed: 6,
             gravity: 0.7, jumpForce: -14, grounded: false,
+            reset() {
+                this.x = 100; this.y = 300; this.vx = 0; this.vy = 0;
+            },
             draw() {
                 const skin = "#FFDBAC";
                 ctx.fillStyle = skin; 
@@ -185,7 +186,6 @@
                 ctx.fillRect(this.x + 38, this.y + 35, 10, 25);
                 ctx.fillStyle = "#000"; ctx.fillRect(this.x + 5, this.y, 30, 10);
                 ctx.fillStyle = skin; ctx.fillRect(this.x + 5, this.y + 5, 30, 25);
-
                 if (frames % 180 > 170) {
                     ctx.fillStyle = "#333";
                     ctx.fillRect(this.x + 10, this.y + 14, 6, 2); 
@@ -194,7 +194,6 @@
                     ctx.fillStyle = "white"; ctx.fillRect(this.x + 10, this.y + 12, 6, 6); ctx.fillRect(this.x + 24, this.y + 12, 6, 6);
                     ctx.fillStyle = "black"; ctx.fillRect(this.x + 12, this.y + 14, 3, 3); ctx.fillRect(this.x + 26, this.y + 14, 3, 3);
                 }
-                
                 ctx.fillStyle = "#0000FF"; ctx.fillRect(this.x + 8, this.y + 30, 24, 30);
                 ["#ff0000", "#ffff00", "#00ff00", "#ff00ff"].forEach((c, i) => { 
                     ctx.fillStyle = c; ctx.fillRect(this.x + 8, this.y + 60 + (i*4), 24, 4); 
@@ -205,6 +204,7 @@
 
         const enemy = { 
             x: 600, y: 50, w: 70, h: 35, dir: 1, hp: 100, active: true,
+            reset() { this.x = 600; this.y = 50; this.hp = 100; this.active = true; },
             update() {
                 if(!this.active) return;
                 this.x += 4 * this.dir;
@@ -229,6 +229,17 @@
             if(isMobile) document.getElementById("mobileControls").classList.remove("invisible");
             gameRunning = true;
             loop();
+        }
+
+        // Nova função para resetar o jogo sem recarregar a página
+        function resetGame() {
+            document.getElementById("screenEnd").classList.add("hidden");
+            frames = 0; kills = 0; timeToSwitch = 10; flightMode = false;
+            projectiles = []; obstacles = [];
+            deive.reset();
+            enemy.reset();
+            container.style.backgroundColor = "#4682B4";
+            gameRunning = true;
         }
 
         function togglePause() {
@@ -273,6 +284,7 @@
             if(!enemy.active && frames % 120 === 0) { enemy.active = true; enemy.hp = 100; }
 
             if (!flightMode && frames % 100 === 0) obstacles.push({ x: canvas.width, y: 330, w: 30, h: 70 });
+            
             obstacles.forEach((obs, i) => {
                 obs.x -= 6;
                 if (checkCol(deive, obs)) endGameState(false);
@@ -319,7 +331,7 @@
             msg.style.color = win ? "#00d4ff" : "#ff4757";
         }
 
-        // --- CONTROLES PC ---
+        // Eventos PC
         window.addEventListener("keydown", (e) => {
             if(e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = true;
             if(e.code === "ArrowRight" || e.code === "KeyD") keys.Right = true;
@@ -335,7 +347,7 @@
             if(e.code === "ArrowDown" || e.code === "KeyS") keys.Down = false;
         });
 
-        // --- CONTROLES MOBILE ---
+        // Eventos Mobile
         const joyBase = document.getElementById("joy-base"), joyStick = document.getElementById("joy-stick");
         let joyId = null;
         joyBase.addEventListener("touchstart", (e) => { e.preventDefault(); joyId = e.changedTouches[0].identifier; }, {passive: false});
