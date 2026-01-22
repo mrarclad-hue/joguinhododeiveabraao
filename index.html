@@ -3,8 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Deive Abraão - Menu Rotation Fix</title>
+    <title>Deive Abraão - Mobile No-Select</title>
     <style>
+        /* Desativa seleção de texto em todo o corpo do jogo */
+        * {
+            -webkit-user-select: none;  /* Safari */
+            -ms-user-select: none;      /* IE 10 e 11 */
+            user-select: none;          /* Padrão (Chrome, Firefox, Edge) */
+            -webkit-tap-highlight-color: transparent; /* Remove o brilho ao tocar em links no mobile */
+        }
+
         body {
             margin: 0; padding: 0;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -21,16 +29,16 @@
             display: flex;
             flex-direction: column;
             background: #4682B4;
-            overflow: visible; /* Permite que controles apareçam abaixo na vertical */
+            overflow: visible;
         }
 
         canvas {
             width: 100%;
             height: 100%;
             display: block;
+            cursor: default;
         }
         
-        /* Controles Mobile */
         #mobileControls {
             position: absolute;
             bottom: -140px; 
@@ -47,7 +55,6 @@
             transition: opacity 0.3s;
         }
         
-        /* Ajuste Horizontal / Fullscreen */
         #game-container:fullscreen #mobileControls {
             bottom: 20px;
         }
@@ -72,17 +79,12 @@
             display: flex; align-items: center; justify-content: center;
             font-weight: bold; font-size: 11px; background: rgba(0, 0, 0, 0.6);
             border: 2px solid #fff; color: white;
-            user-select: none; transition: transform 0.1s;
+            cursor: pointer;
         }
 
-        /* Top Bar - Garantindo que fique acima de TUDO (z-index 400) */
         .top-bar {
-            position: absolute; 
-            top: 10px; 
-            right: 10px;
-            display: flex; 
-            gap: 10px; 
-            z-index: 400; 
+            position: absolute; top: 10px; right: 10px;
+            display: flex; gap: 10px; z-index: 400; 
         }
         .icon-btn {
             width: 45px; height: 45px; background: rgba(0,0,0,0.7);
@@ -108,16 +110,11 @@
         }
 
         :fullscreen #game-container {
-            width: 100vw;
-            height: 100vh;
-            max-width: none;
-            aspect-ratio: auto;
+            width: 100vw; height: 100vh; max-width: none; aspect-ratio: auto;
         }
     </style>
 </head>
-<body>
-
-    <div id="game-container">
+<body oncontextmenu="return false;"> <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         
         <div class="top-bar">
@@ -166,12 +163,10 @@
         const keys = { Left: false, Right: false, Up: false, Down: false };
         let projectiles = [], obstacles = [];
 
-        // Função de Rotação (acessível de qualquer lugar)
         function toggleRotate() {
             if (!document.fullscreenElement) {
                 if (container.requestFullscreen) container.requestFullscreen();
                 else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
-                
                 if (screen.orientation && screen.orientation.lock) {
                     screen.orientation.lock("landscape").catch(e => {});
                 }
