@@ -2,377 +2,79 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Deive Abraão - Persist Fullscreen</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Jogos IA</title>
     <style>
-        * {
-            -webkit-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
         body {
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            height: 100vh; background-color: #111;
-            font-family: 'Arial', sans-serif; color: white;
-            overflow: hidden; touch-action: none;
-        }
-
-        #game-container {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            aspect-ratio: 2 / 1;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: white;
             display: flex;
             flex-direction: column;
-            background: #4682B4;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-        
-        #mobileControls {
-            position: absolute;
-            bottom: -140px; 
-            left: 0;
-            width: 100%;
-            height: 120px;
-            pointer-events: none;
-            z-index: 200;
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 0 20px;
-            box-sizing: border-box;
-            transition: opacity 0.3s;
-        }
-        
-        /* Ajuste para quando o container estiver em Fullscreen */
-        #game-container:fullscreen #mobileControls,
-        #game-container:-webkit-full-screen #mobileControls {
-            bottom: 20px;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
         }
 
-        #joy-base {
-            width: 90px; height: 90px;
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.4);
-            border-radius: 50%; pointer-events: auto;
-            position: relative;
-        }
-        #joy-stick {
-            position: absolute; top: 25px; left: 25px;
-            width: 40px; height: 40px; background: #fff;
-            border-radius: 50%; pointer-events: none;
-        }
-        .action-btns {
-            display: flex; gap: 15px; pointer-events: auto;
-        }
-        .btn-m {
-            width: 70px; height: 70px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 11px; background: rgba(0, 0, 0, 0.6);
-            border: 2px solid #fff; color: white;
+        .logo {
+            font-size: 80px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
         }
 
-        .top-bar {
-            position: absolute; top: 10px; right: 10px;
-            display: flex; gap: 10px; z-index: 400; 
-        }
-        .icon-btn {
-            width: 45px; height: 45px; background: rgba(0,0,0,0.7);
-            border-radius: 5px; display: flex; align-items: center;
-            justify-content: center; cursor: pointer; border: 1px solid #fff;
-            font-size: 20px;
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            font-weight: 300;
         }
 
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            z-index: 300; text-align: center;
-        }
-        .hidden { display: none !important; }
-        .invisible { opacity: 0; pointer-events: none; }
-
-        .main-btn {
-            background: #0084ff; color: white; border: none;
-            padding: 15px 40px; font-size: 20px; border-radius: 10px;
-            margin-top: 20px; cursor: pointer; font-weight: bold;
+        .container-botoes {
+            display: flex;
+            gap: 20px;
         }
 
-        :fullscreen #game-container,
-        :-webkit-full-screen #game-container {
-            width: 100vw; height: 100vh; max-width: none; aspect-ratio: auto;
+        .btn {
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: white;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-5px);
+        }
+
+        .btn-casual {
+            background-color: #10b981;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-pro {
+            background-color: #ef4444;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
         }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-        
-        <div class="top-bar">
-            <div id="rotateBtn" class="icon-btn" onclick="toggleRotate()">🔄</div>
-            <div id="pauseBtn" class="icon-btn hidden">II</div>
-        </div>
+    <div class="logo">✧ IA ✧</div>
 
-        <div id="mobileControls" class="invisible">
-            <div id="joy-base"><div id="joy-stick"></div></div>
-            <div class="action-btns">
-                <div class="btn-m" style="background: #ff4757;" id="mShoot">ATIRAR</div>
-                <div class="btn-m" style="background: #0084ff;" id="mJump">PULAR</div>
-            </div>
-        </div>
+    <h1>Aqui você tem duas opções de jogos</h1>
 
-        <div id="menuStart" class="overlay">
-            <h1 style="color: #00d4ff; margin: 0;">DEIVE ABRAÃO</h1>
-            <p id="instructionText">PC: Setas para mover, Espaço Pula, SHIFT Atira.</p>
-            <button class="main-btn" onclick="initGame()">INICIAR</button>
-        </div>
-
-        <div id="menuPause" class="overlay hidden">
-            <h1>PAUSADO</h1>
-            <button class="main-btn" onclick="togglePause()">RETOMAR</button>
-        </div>
-
-        <div id="screenEnd" class="overlay hidden">
-            <h1 id="endMessage" style="font-size: 35px;"></h1>
-            <button class="main-btn" onclick="resetGame()">JOGAR NOVAMENTE</button>
-        </div>
+    <div class="container-botoes">
+        <a href="jogobase.html" class="btn btn-casual">JOGO CASUAL</a>
+        <a href="jogopro.html" class="btn btn-pro">JOGO DESAFIADOR</a>
     </div>
 
-    <script>
-        const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const container = document.getElementById("game-container");
-        
-        canvas.width = 800; canvas.height = 400;
-
-        let gameRunning = false, paused = false, frames = 0, kills = 0, timeToSwitch = 10, flightMode = false;
-        const keys = { Left: false, Right: false, Up: false, Down: false };
-        let projectiles = [], obstacles = [];
-
-        function toggleRotate() {
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                if (container.requestFullscreen) container.requestFullscreen();
-                else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
-                if (screen.orientation && screen.orientation.lock) {
-                    screen.orientation.lock("landscape").catch(e => {});
-                }
-            } else {
-                if (document.exitFullscreen) document.exitFullscreen();
-                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            }
-        }
-
-        const deive = {
-            x: 100, y: 300, w: 40, h: 90, vx: 0, vy: 0, speed: 6,
-            gravity: 0.7, jumpForce: -14, grounded: false,
-            reset() {
-                this.x = 100; this.y = 300; this.vx = 0; this.vy = 0;
-            },
-            draw() {
-                const skin = "#FFDBAC";
-                ctx.fillStyle = skin; 
-                ctx.fillRect(this.x - 8, this.y + 35, 10, 25);
-                ctx.fillRect(this.x + 38, this.y + 35, 10, 25);
-                ctx.fillStyle = "#000"; ctx.fillRect(this.x + 5, this.y, 30, 10);
-                ctx.fillStyle = skin; ctx.fillRect(this.x + 5, this.y + 5, 30, 25);
-                if (frames % 180 > 170) {
-                    ctx.fillStyle = "#333";
-                    ctx.fillRect(this.x + 10, this.y + 14, 6, 2); 
-                    ctx.fillRect(this.x + 24, this.y + 14, 6, 2);
-                } else {
-                    ctx.fillStyle = "white"; ctx.fillRect(this.x + 10, this.y + 12, 6, 6); ctx.fillRect(this.x + 24, this.y + 12, 6, 6);
-                    ctx.fillStyle = "black"; ctx.fillRect(this.x + 12, this.y + 14, 3, 3); ctx.fillRect(this.x + 26, this.y + 14, 3, 3);
-                }
-                ctx.fillStyle = "#0000FF"; ctx.fillRect(this.x + 8, this.y + 30, 24, 30);
-                ["#ff0000", "#ffff00", "#00ff00", "#ff00ff"].forEach((c, i) => { 
-                    ctx.fillStyle = c; ctx.fillRect(this.x + 8, this.y + 60 + (i*4), 24, 4); 
-                });
-                ctx.fillStyle = skin; ctx.fillRect(this.x + 6, this.y + 76, 12, 14); ctx.fillRect(this.x + 22, this.y + 76, 12, 14);
-            }
-        };
-
-        const enemy = { 
-            x: 600, y: 50, w: 70, h: 35, dir: 1, hp: 100, active: true,
-            reset() { this.x = 600; this.y = 50; this.hp = 100; this.active = true; },
-            update() {
-                if(!this.active) return;
-                this.x += 4 * this.dir;
-                if(this.x > 700 || this.x < 100) this.dir *= -1;
-                if(frames % 120 === 101) projectiles.push({x: this.x+35, y: this.y+35, vx: -7, vy: (deive.y - this.y)/40, type: 'enemy'});
-            },
-            draw() {
-                if(!this.active) return;
-                ctx.fillStyle = "#333"; ctx.fillRect(this.x, this.y, this.w, this.h);
-                if(frames % 120 < 100) {
-                    ctx.fillStyle = "white"; ctx.fillRect(this.x + 25, this.y + 10, 20, 15);
-                    ctx.fillStyle = "red"; ctx.fillRect(this.x + 32, this.y + 15, 6, 6);
-                }
-                ctx.fillStyle = "black"; ctx.fillRect(this.x, this.y - 10, this.w, 5);
-                ctx.fillStyle = "red"; ctx.fillRect(this.x, this.y - 10, (this.hp/100)*this.w, 5);
-            }
-        };
-
-        function initGame() {
-            document.getElementById("menuStart").classList.add("hidden");
-            document.getElementById("pauseBtn").classList.remove("hidden");
-            if(isMobile) document.getElementById("mobileControls").classList.remove("invisible");
-            gameRunning = true;
-            loop();
-        }
-
-        // Nova função para resetar o jogo sem recarregar a página
-        function resetGame() {
-            document.getElementById("screenEnd").classList.add("hidden");
-            frames = 0; kills = 0; timeToSwitch = 10; flightMode = false;
-            projectiles = []; obstacles = [];
-            deive.reset();
-            enemy.reset();
-            container.style.backgroundColor = "#4682B4";
-            gameRunning = true;
-        }
-
-        function togglePause() {
-            paused = !paused;
-            document.getElementById("menuPause").classList.toggle("hidden", !paused);
-        }
-
-        function shoot() {
-            if(!gameRunning || paused) return;
-            projectiles.push({x: deive.x + 40, y: deive.y + 40, vx: 10, vy: 0, type: 'player'});
-        }
-
-        function loop() {
-            if (gameRunning && !paused) { update(); draw(); }
-            requestAnimationFrame(loop);
-        }
-
-        function update() {
-            frames++;
-            if (frames % 60 === 0) {
-                timeToSwitch--;
-                if(timeToSwitch <= 0) { 
-                    flightMode = !flightMode; timeToSwitch = 10; obstacles = []; 
-                    container.style.backgroundColor = flightMode ? "#00BFFF" : "#4682B4"; 
-                }
-            }
-
-            if (keys.Left) deive.x -= deive.speed;
-            if (keys.Right) deive.x += deive.speed;
-            if (flightMode) {
-                if (keys.Up) deive.y -= deive.speed;
-                if (keys.Down) deive.y += deive.speed;
-            } else {
-                deive.vy += deive.gravity; deive.y += deive.vy;
-                if (deive.y > 300) { deive.y = 300; deive.vy = 0; deive.grounded = true; }
-            }
-
-            deive.x = Math.max(0, Math.min(canvas.width - deive.w, deive.x));
-            deive.y = Math.max(40, Math.min(canvas.height - deive.h, deive.y));
-
-            enemy.update();
-            if(!enemy.active && frames % 120 === 0) { enemy.active = true; enemy.hp = 100; }
-
-            if (!flightMode && frames % 100 === 0) obstacles.push({ x: canvas.width, y: 330, w: 30, h: 70 });
-            
-            obstacles.forEach((obs, i) => {
-                obs.x -= 6;
-                if (checkCol(deive, obs)) endGameState(false);
-                if (obs.x < -40) obstacles.splice(i, 1);
-            });
-
-            projectiles.forEach((p, i) => {
-                p.x += p.vx; p.y += p.vy || 0;
-                if(p.type === 'enemy') {
-                    if(checkCol(deive, {x: p.x-5, y: p.y-5, w: 10, h: 10})) endGameState(false);
-                } else {
-                    if(enemy.active && checkCol(enemy, {x: p.x, y: p.y, w: 20, h: 6})) {
-                        enemy.hp -= 25; projectiles.splice(i, 1);
-                        if(enemy.hp <= 0) { enemy.active = false; kills++; if(kills >= 3) endGameState(true); }
-                    }
-                }
-                if(p.x < 0 || p.x > 800) projectiles.splice(i, 1);
-            });
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#222"; ctx.fillRect(0, 390, canvas.width, 10);
-            obstacles.forEach(obs => { ctx.fillStyle = "#333"; ctx.fillRect(obs.x, obs.y, obs.w, obs.h); });
-            projectiles.forEach(p => {
-                ctx.fillStyle = p.type === 'enemy' ? "#ff00ff" : "#00ffff";
-                if(p.type === 'enemy') { ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill(); }
-                else { ctx.fillRect(p.x, p.y, 20, 6); }
-            });
-            enemy.draw(); deive.draw();
-            ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0,0,canvas.width, 40);
-            ctx.fillStyle = "white"; ctx.font = "bold 14px Arial";
-            ctx.fillText(`MODO: ${flightMode ? 'VOO' : 'TERRA'} | KILLS: ${kills}/3 | TEMPO: ${timeToSwitch}s`, 20, 25);
-        }
-
-        function checkCol(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
-
-        function endGameState(win) {
-            gameRunning = false;
-            const screen = document.getElementById("screenEnd");
-            const msg = document.getElementById("endMessage");
-            screen.classList.remove("hidden");
-            msg.innerText = win ? "PARABÉNS, VOCÊ GANHOU!" : "GAME OVER";
-            msg.style.color = win ? "#00d4ff" : "#ff4757";
-        }
-
-        // Eventos PC
-        window.addEventListener("keydown", (e) => {
-            if(e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = true;
-            if(e.code === "ArrowRight" || e.code === "KeyD") keys.Right = true;
-            if(e.code === "ArrowUp" || e.code === "KeyW") keys.Up = true;
-            if(e.code === "ArrowDown" || e.code === "KeyS") keys.Down = true;
-            if(e.code === "Space") { if(gameRunning && !flightMode && deive.grounded) { deive.vy = deive.jumpForce; deive.grounded = false; } }
-            if(e.key === "Shift") shoot(); 
-        });
-        window.addEventListener("keyup", (e) => {
-            if(e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = false;
-            if(e.code === "ArrowRight" || e.code === "KeyD") keys.Right = false;
-            if(e.code === "ArrowUp" || e.code === "KeyW") keys.Up = false;
-            if(e.code === "ArrowDown" || e.code === "KeyS") keys.Down = false;
-        });
-
-        // Eventos Mobile
-        const joyBase = document.getElementById("joy-base"), joyStick = document.getElementById("joy-stick");
-        let joyId = null;
-        joyBase.addEventListener("touchstart", (e) => { e.preventDefault(); joyId = e.changedTouches[0].identifier; }, {passive: false});
-        window.addEventListener("touchmove", (e) => {
-            if(joyId === null) return;
-            const t = Array.from(e.changedTouches).find(v => v.identifier === joyId);
-            if(!t) return;
-            const r = joyBase.getBoundingClientRect(), cx = r.left+r.width/2, cy = r.top+r.height/2;
-            let dx = t.clientX-cx, dy = t.clientY-cy, d = Math.sqrt(dx*dx+dy*dy), m = 35;
-            if(d > m) { dx *= m/d; dy *= m/d; }
-            joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
-            keys.Left = dx < -10; keys.Right = dx > 10; keys.Up = dy < -10; keys.Down = dy > 10;
-        }, {passive: false});
-        window.addEventListener("touchend", (e) => { 
-            if(joyId !== null && Array.from(e.changedTouches).some(v => v.identifier === joyId)) {
-                joyId = null; joyStick.style.transform = "translate(0,0)"; keys.Left = keys.Right = keys.Up = keys.Down = false;
-            }
-        });
-
-        document.getElementById("mJump").addEventListener("touchstart", (e) => { 
-            e.preventDefault(); 
-            if(gameRunning && !flightMode && deive.grounded) { deive.vy = deive.jumpForce; deive.grounded = false; } 
-        });
-        document.getElementById("mShoot").addEventListener("touchstart", (e) => { e.preventDefault(); shoot(); });
-        document.getElementById("pauseBtn").onclick = togglePause;
-    </script>
 </body>
 </html>

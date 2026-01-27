@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Deive Abraão - Roguelike Sound Edition</title>
+    <style>
+        * { -webkit-user-select: none; -ms-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            height: 100vh; background-color: #111; font-family: 'Arial', sans-serif; color: white; overflow: hidden; touch-action: none;
+        }
+        #game-container {
+            position: relative; width: 100%; max-width: 800px; aspect-ratio: 2 / 1;
+            display: flex; flex-direction: column; background: #1a1a2e; overflow: hidden; border: 2px solid #333;
+        }
+        
+        #game-container.fullscreen { 
+            max-width: 100vw; width: 100vw; height: 100vh; aspect-ratio: auto; border: none; 
+        }
+        
+        canvas { width: 100%; height: 100%; display: block; }
+        
+        #mobileControls {
+            position: absolute; bottom: 20px; left: 0; width: 100%; 
+            pointer-events: none; z-index: 700; display: none; justify-content: space-between; align-items: center; 
+            padding: 0 30px; box-sizing: border-box;
+        }
+
+        @media (orientation: portrait) {
+            #mobileControls {
+                position: fixed;
+                bottom: 40px;
+                display: none;
+            }
+            #game-container {
+                width: 100vw;
+                max-width: none;
+                border-left: none; border-right: none;
+            }
+        }
+
+        #joy-base { width: 85px; height: 85px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; pointer-events: auto; position: relative; }
+        #joy-stick { position: absolute; top: 22.5px; left: 22.5px; width: 40px; height: 40px; background: #fff; border-radius: 50%; pointer-events: none; }
+        .action-btns { display: flex; gap: 15px; pointer-events: auto; }
+        .btn-m { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; background: rgba(0, 0, 0, 0.5); border: 2px solid rgba(255,255,255,0.8); color: white; }
+
+        .top-bar { position: absolute; top: 10px; right: 10px; display: flex; gap: 10px; z-index: 800; }
+        .icon-btn { width: 45px; height: 45px; background: rgba(0,0,0,0.7); border-radius: 5px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #fff; font-size: 18px; pointer-events: auto; }
+
+        .overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 600; 
+            text-align: center; padding: 15px; box-sizing: border-box;
+        }
+        .hidden { display: none !important; }
+        
+        .main-btn { 
+            background: #0084ff; color: white; border: none; padding: 12px; 
+            font-size: 14px; border-radius: 10px; margin-top: 8px; cursor: pointer; 
+            font-weight: bold; width: 100%; max-width: 220px;
+        }
+        .btn-alt { background: #444; }
+        
+        .upgrade-container { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; width: 100%; }
+        .upgrade-card { background: #222; border: 2px solid #00d4ff; padding: 10px; border-radius: 10px; cursor: pointer; width: 110px; font-size: 12px; }
+        
+        #instructions { font-size: 12px; margin-bottom: 10px; color: #aaa; }
+        h1 { font-size: 24px !important; margin: 5px 0; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="mobileControls">
+            <div id="joy-base"><div id="joy-stick"></div></div>
+            <div class="action-btns">
+                <div class="btn-m" style="background: rgba(255, 71, 87, 0.6);" id="mShoot">ATIRAR</div>
+                <div class="btn-m" style="background: rgba(0, 132, 255, 0.6);" id="mJump">PULAR</div>
+            </div>
+        </div>
+
+        <div class="top-bar">
+            <div id="fsBtn" class="icon-btn hidden" onclick="toggleFullscreen()" title="Tela Cheia">⛶</div>
+            <div id="pauseBtn" class="icon-btn hidden" onclick="handlePauseClick()">II</div>
+        </div>
+
+        <div id="menuStart" class="overlay">
+            <h1 style="color: #00d4ff;">DEIVE ROGUELIKE</h1>
+            <div id="instructions"></div>
+            <button class="main-btn" onclick="initGame()">INICIAR JOGO</button>
+            <button class="main-btn btn-alt" onclick="toggleFullscreen()">TELA CHEIA (HORIZONTAL)</button>
+        </div>
+
+        <div id="menuUpgrade" class="overlay hidden">
+            <h2 style="color: #f1c40f; font-size: 18px;">VITÓRIA! ESCOLHA UM UPGRADE</h2>
+            <div id="cards-wrapper" class="upgrade-container"></div>
+        </div>
+
+        <div id="menuPause" class="overlay hidden">
+            <h1>PAUSADO</h1>
+            <button class="main-btn" onclick="togglePause()">RETOMAR</button>
+            <button class="main-btn btn-alt" onclick="toggleFullscreen()">TELA CHEIA</button>
+        </div>
+
+        <div id="screenEnd" class="overlay hidden">
+            <h1 id="endMessage"></h1>
+            <p id="statsEnd"></p>
+            <button class="main-btn" onclick="resetGame()">TENTAR NOVAMENTE</button>
+        </div>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        const mobileControls = document.getElementById("mobileControls");
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const container = document.getElementById("game-container");
+        canvas.width = 800; canvas.height = 400;
+
+        if(isMobile) {
+            document.getElementById("instructions").innerHTML = "Use o Joystick para mover.<br>Botões para pular e atirar.";
+        } else {
+            document.getElementById("instructions").innerHTML = "Setas/WASD: Mover | Espaço: Pular<br>Shift: Atirar";
+        }
+
+        let gameRunning = false, paused = false, frames = 0, loopId = null;
+        let currentLevel = 1, killsInLevel = 0, totalKills = 0;
+        let flightMode = false, timeToSwitch = 10;
+        
+        const physics = { friction: 0.85, acceleration: 0.8, maxVel: 8 };
+        const playerStats = { fireRate: 400, lastShot: 0, damage: 25, jumpForce: -14, hp: 100, maxHp: 100, bulletSize: 20, gravity: 0.7 };
+
+        const allUpgrades = [
+            { id: 'speed', title: 'Botas', desc: '+ Vel', run: () => physics.maxVel += 2 },
+            { id: 'fireRate', title: 'Gatilho', desc: '+ Cadência', run: () => playerStats.fireRate *= 0.7 },
+            { id: 'damage', title: 'Dano', desc: '+ Poder', run: () => playerStats.damage += 20 },
+            { id: 'maxHp', title: 'Armadura', desc: '+ Vida Máx', run: () => { playerStats.maxHp += 50; playerStats.hp += 50; }},
+            { id: 'heal', title: 'Médico', desc: 'Cura Total', run: () => playerStats.hp = playerStats.maxHp }
+        ];
+
+        const keys = { Left: false, Right: false, Up: false, Down: false };
+        let projectiles = [], obstacles = [];
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            if (type === 'shoot') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(10, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                osc.start(); osc.stop(now + 0.1);
+            } else if (type === 'jump') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.start(); osc.stop(now + 0.15);
+            } else if (type === 'hit') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
+                osc.frequency.linearRampToValueAtTime(20, now + 0.2);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(); osc.stop(now + 0.2);
+            } else if (type === 'kill') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(20, now + 0.5);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                osc.start(); osc.stop(now + 0.5);
+            } else if (type === 'upgrade') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(); osc.stop(now + 0.3);
+            }
+        }
+
+        const deive = {
+            x: 100, y: 300, w: 40, h: 90, vx: 0, vy: 0, grounded: false,
+            blink: false, nextBlink: 120,
+            draw() {
+                if (frames >= this.nextBlink) {
+                    this.blink = true;
+                    if (frames >= this.nextBlink + 8) { this.blink = false; this.nextBlink = frames + 150 + Math.random() * 100; }
+                }
+                ctx.fillStyle = "#333"; ctx.fillRect(this.x - 5, this.y - 25, 50, 6);
+                ctx.fillStyle = "#2ecc71"; ctx.fillRect(this.x - 5, this.y - 25, (playerStats.hp/playerStats.maxHp) * 50, 6);
+                const skin = "#FFDBAC", suitColor = flightMode ? "#00d4ff" : "#0000FF", pantsColor = flightMode ? "#1a1a2e" : "#ff0000";
+                const walking = Math.abs(this.vx) > 0.5, animSpeed = 0.25;
+                const legOffset = walking ? Math.sin(frames * animSpeed) * 10 : 0;
+                const armSwing = walking ? Math.cos(frames * animSpeed) * 8 : 0;
+                const jumpY = (!this.grounded && !flightMode) ? -5 : 0;
+                ctx.fillStyle = skin; 
+                ctx.fillRect(this.x + 5, this.y + 76 + (this.grounded ? legOffset : 5), 10, 14); 
+                ctx.fillRect(this.x + 25, this.y + 76 - (this.grounded ? legOffset : 5), 10, 14);
+                ctx.fillStyle = skin;
+                ctx.fillRect(this.x + 2, this.y + 35 + jumpY + armSwing, 8, 22); 
+                ctx.fillRect(this.x + 30, this.y + 35 + jumpY - armSwing, 8, 22);
+                ctx.fillStyle = "#000"; ctx.fillRect(this.x + 5, this.y + jumpY, 30, 10);
+                ctx.fillStyle = skin; ctx.fillRect(this.x + 5, this.y + 5 + jumpY, 30, 25);
+                if (!this.blink) {
+                    ctx.fillStyle = "white"; ctx.fillRect(this.x + 10, this.y + 12 + jumpY, 6, 6); ctx.fillRect(this.x + 24, this.y + 12 + jumpY, 6, 6);
+                    ctx.fillStyle = "black"; ctx.fillRect(this.x + 12, this.y + 14 + jumpY, 3, 3); ctx.fillRect(this.x + 26, this.y + 14 + jumpY, 3, 3);
+                }
+                ctx.fillStyle = suitColor; ctx.fillRect(this.x + 8, this.y + 30 + jumpY, 24, 30);
+                ctx.fillStyle = pantsColor; ctx.fillRect(this.x + 8, this.y + 60 + jumpY, 24, 4); 
+                if(flightMode) {
+                    ctx.fillStyle = "#fff";
+                    ctx.fillRect(this.x + 12, this.y + 85, 4, 10 + Math.random()*10);
+                    ctx.fillRect(this.x + 24, this.y + 85, 4, 10 + Math.random()*10);
+                }
+            }
+        };
+
+        const enemy = { 
+            x: 600, y: 50, w: 70, h: 45, dir: 1, hp: 100, maxHp: 100, active: true,
+            blink: false, nextBlink: 200,
+            update() {
+                if(!this.active) return;
+                this.x += (4 + currentLevel) * this.dir;
+                if(this.x > 720 || this.x < 80) this.dir *= -1;
+                if (frames >= this.nextBlink) {
+                    this.blink = true;
+                    if (frames >= this.nextBlink + 15) { this.blink = false; this.nextBlink = frames + 180 + Math.random()*100; }
+                }
+                let freq = Math.max(30, 110 - (currentLevel * 15));
+                if(frames % Math.floor(freq) === 0) projectiles.push({x: this.x+35, y: this.y+35, vx: -7, vy: (deive.y - this.y)/40, type: 'enemy'});
+            },
+            draw() {
+                if(!this.active) return;
+                ctx.fillStyle = "#444"; ctx.fillRect(this.x, this.y, this.w, this.h);
+                ctx.fillStyle = "#5d3fd3"; ctx.fillRect(this.x + 5, this.y + 5, this.w - 10, this.h - 10);
+                const eyeX = this.x + (this.w/2) - 10, eyeY = this.y + (this.h/2) - 10;
+                ctx.fillStyle = "white"; ctx.fillRect(eyeX, eyeY, 20, 20);
+                if(!this.blink) { ctx.fillStyle = "#ff0000"; ctx.fillRect(eyeX + 5, eyeY + 5, 10, 10); }
+                else { ctx.fillStyle = "#222"; ctx.fillRect(eyeX, eyeY + 8, 20, 4); }
+                ctx.fillStyle = "black"; ctx.fillRect(this.x, this.y - 12, this.w, 6);
+                ctx.fillStyle = "#ff4757"; ctx.fillRect(this.x, this.y - 12, (this.hp/this.maxHp)*this.w, 6);
+            }
+        };
+
+        function updateControlsVisibility() {
+            if (isMobile && gameRunning && !paused) {
+                mobileControls.style.display = "flex";
+            } else {
+                mobileControls.style.display = "none";
+            }
+        }
+
+        async function toggleFullscreen() {
+            try {
+                if (!document.fullscreenElement) {
+                    await container.requestFullscreen();
+                    container.classList.add('fullscreen');
+                    if (isMobile && screen.orientation && screen.orientation.lock) {
+                        await screen.orientation.lock('landscape').catch(e => console.log(e));
+                    }
+                } else {
+                    document.exitFullscreen();
+                    container.classList.remove('fullscreen');
+                }
+            } catch (err) { console.log(err); }
+        }
+
+        function resetVariables() {
+            currentLevel = 1; killsInLevel = 0; totalKills = 0;
+            flightMode = false; timeToSwitch = 10; frames = 0;
+            physics.maxVel = 8;
+            playerStats.hp = 100; playerStats.maxHp = 100; playerStats.fireRate = 400; playerStats.damage = 25;
+            deive.x = 100; deive.y = 300; deive.vx = 0; deive.vy = 0;
+            enemy.active = true; enemy.hp = 100; enemy.maxHp = 100;
+            projectiles = []; obstacles = [];
+            container.style.backgroundColor = "#1a1a2e";
+        }
+
+        function initGame() { 
+            audioCtx.resume();
+            resetVariables();
+            document.getElementById("menuStart").classList.add("hidden"); 
+            document.getElementById("pauseBtn").classList.remove("hidden"); 
+            document.getElementById("fsBtn").classList.remove("hidden"); 
+            gameRunning = true; 
+            updateControlsVisibility();
+            if(!loopId) loop(); 
+        }
+
+        function resetGame() { 
+            document.getElementById("screenEnd").classList.add("hidden");
+            resetVariables();
+            gameRunning = true;
+            paused = false;
+            updateControlsVisibility();
+        }
+
+        function handlePauseClick() { if(!gameRunning) return; togglePause(); }
+        
+        function togglePause() { 
+            paused = !paused; 
+            document.getElementById("menuPause").classList.toggle("hidden", !paused); 
+            updateControlsVisibility(); 
+        }
+
+        function shoot() { 
+            const now = Date.now(); if(!gameRunning || paused || now - playerStats.lastShot < playerStats.fireRate) return; 
+            projectiles.push({x: deive.x + 40, y: deive.y + 40, vx: 10, vy: 0, type: 'player', size: playerStats.bulletSize}); 
+            playerStats.lastShot = now; playSound('shoot');
+        }
+        function checkCol(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+        
+        function endGameState(win) { 
+            gameRunning = false; 
+            updateControlsVisibility();
+            document.getElementById("endMessage").innerText = win ? "HERÓI LENDÁRIO, VOCÊ É O MELHOR!" : "VOCÊ CAIU, LEVANTE-SE!"; 
+            document.getElementById("statsEnd").innerText = `Kills: ${totalKills}`; 
+            document.getElementById("screenEnd").classList.remove("hidden"); 
+        }
+        
+        function update() {
+            frames++;
+            if (frames % 60 === 0) {
+                timeToSwitch--;
+                if(timeToSwitch <= 0) { 
+                    flightMode = !flightMode; timeToSwitch = 10; 
+                    container.style.backgroundColor = flightMode ? "#16213e" : "#1a1a2e"; 
+                }
+            }
+            if (keys.Left) deive.vx -= physics.acceleration;
+            if (keys.Right) deive.vx += physics.acceleration;
+            deive.vx = Math.max(-physics.maxVel, Math.min(physics.maxVel, deive.vx));
+            if (!keys.Left && !keys.Right) deive.vx *= physics.friction;
+            deive.x += deive.vx;
+            if (flightMode) {
+                if (keys.Up) deive.vy -= physics.acceleration;
+                if (keys.Down) deive.vy += physics.acceleration;
+                deive.vy = Math.max(-physics.maxVel, Math.min(physics.maxVel, deive.vy));
+                if (!keys.Up && !keys.Down) deive.vy *= physics.friction;
+                deive.y += deive.vy;
+            } else {
+                deive.vy += playerStats.gravity; deive.y += deive.vy;
+                if (deive.y > 300) { deive.y = 300; deive.vy = 0; deive.grounded = true; }
+            }
+            deive.x = Math.max(0, Math.min(canvas.width - deive.w, deive.x));
+            deive.y = Math.max(40, Math.min(canvas.height - deive.h, deive.y));
+            enemy.update();
+            if(!enemy.active && frames % 100 === 0) { enemy.hp = enemy.maxHp; enemy.active = true; }
+            if (!flightMode && frames % 90 === 0) obstacles.push({ x: canvas.width, y: 330, w: 30, h: 70 });
+            obstacles.forEach((obs, i) => {
+                obs.x -= (6 + currentLevel);
+                if (checkCol(deive, obs)) { 
+                    playerStats.hp -= 15; obstacles.splice(i, 1); playSound('hit');
+                    if(playerStats.hp <= 0) endGameState(false); 
+                }
+                if (obs.x < -40) obstacles.splice(i, 1);
+            });
+            projectiles.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy || 0;
+                if(p.type === 'enemy') {
+                    if(checkCol(deive, {x: p.x-5, y: p.y-5, w: 10, h: 10})) { 
+                        playerStats.hp -= 10; projectiles.splice(i, 1); playSound('hit');
+                        if(playerStats.hp <= 0) endGameState(false); 
+                    }
+                } else {
+                    if(enemy.active && checkCol(enemy, {x: p.x, y: p.y, w: p.size, h: 10})) {
+                        enemy.hp -= playerStats.damage; projectiles.splice(i, 1); playSound('hit');
+                        if(enemy.hp <= 0) { 
+                            enemy.active = false; killsInLevel++; totalKills++; playSound('kill');
+                            if(killsInLevel >= 3) { if(currentLevel>=5) endGameState(true); else showUpgrades(); }
+                        }
+                    }
+                }
+                if(p.x < -50 || p.x > 850) projectiles.splice(i, 1);
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#222"; ctx.fillRect(0, 390, canvas.width, 10);
+            obstacles.forEach(obs => { ctx.fillStyle = "#e67e22"; ctx.fillRect(obs.x, obs.y, obs.w, obs.h); });
+            projectiles.forEach(p => {
+                ctx.fillStyle = p.type === 'enemy' ? "#ff00ff" : "#00ffff";
+                if(p.type === 'enemy') { ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill(); }
+                else { ctx.fillRect(p.x, p.y, p.size, 8); }
+            });
+            enemy.draw(); deive.draw();
+            ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0,0,canvas.width, 45);
+            ctx.fillStyle = "white"; ctx.font = "bold 14px Arial";
+            ctx.fillText(`LVL: ${currentLevel}/5 | KILLS: ${killsInLevel}/3`, 20, 28);
+            ctx.textAlign = "center"; ctx.font = "bold 18px Arial";
+            ctx.fillStyle = flightMode ? "#00d4ff" : "#f1c40f";
+            ctx.fillText(`${flightMode ? "VOANDO" : "PRONTO EM"}: ${timeToSwitch}s`, canvas.width / 2, 30);
+            ctx.textAlign = "left";
+        }
+
+        function loop() { if (gameRunning && !paused) { update(); draw(); } loopId = requestAnimationFrame(loop); }
+
+        function showUpgrades() {
+            gameRunning = false;
+            updateControlsVisibility();
+            const wrapper = document.getElementById("cards-wrapper");
+            wrapper.innerHTML = "";
+            const selected = [...allUpgrades].sort(() => 0.5 - Math.random()).slice(0, 3);
+            selected.forEach(upg => {
+                const card = document.createElement("div");
+                card.className = "upgrade-card";
+                card.innerHTML = `<b>${upg.title}</b><br><small>${upg.desc}</small>`;
+                card.onclick = () => applyUpgrade(upg);
+                wrapper.appendChild(card);
+            });
+            document.getElementById("menuUpgrade").classList.remove("hidden");
+        }
+
+        function applyUpgrade(upg) {
+            upg.run(); currentLevel++; killsInLevel = 0;
+            enemy.maxHp += 60; enemy.hp = enemy.maxHp; enemy.active = true;
+            projectiles = []; obstacles = []; playSound('upgrade');
+            document.getElementById("menuUpgrade").classList.add("hidden");
+            gameRunning = true;
+            updateControlsVisibility();
+        }
+
+        window.addEventListener("keydown", (e) => {
+            if(e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = true;
+            if(e.code === "ArrowRight" || e.code === "KeyD") keys.Right = true;
+            if(e.code === "ArrowUp" || e.code === "KeyW") keys.Up = true;
+            if(e.code === "ArrowDown" || e.code === "KeyS") keys.Down = true;
+            if(e.code === "Space") { if(gameRunning && !flightMode && deive.grounded) { deive.vy = playerStats.jumpForce; deive.grounded = false; playSound('jump'); } }
+            if(e.key === "Shift") shoot(); 
+            if(e.code === "Escape") togglePause();
+        });
+        window.addEventListener("keyup", (e) => {
+            if(e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = false;
+            if(e.code === "ArrowRight" || e.code === "KeyD") keys.Right = false;
+            if(e.code === "ArrowUp" || e.code === "KeyW") keys.Up = false;
+            if(e.code === "ArrowDown" || e.code === "KeyS") keys.Down = false;
+        });
+
+        const joyBase = document.getElementById("joy-base"), joyStick = document.getElementById("joy-stick");
+        let joyId = null;
+        joyBase.addEventListener("touchstart", (e) => { e.preventDefault(); joyId = e.changedTouches[0].identifier; }, {passive: false});
+        window.addEventListener("touchmove", (e) => {
+            if(joyId === null) return;
+            const t = Array.from(e.changedTouches).find(v => v.identifier === joyId);
+            if(!t) return;
+            const r = joyBase.getBoundingClientRect(), cx = r.left+r.width/2, cy = r.top+r.height/2;
+            let dx = t.clientX-cx, dy = t.clientY-cy, d = Math.sqrt(dx*dx+dy*dy), m = 35;
+            if(d > m) { dx *= m/d; dy *= m/d; }
+            joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
+            keys.Left = dx < -10; keys.Right = dx > 10; keys.Up = dy < -10; keys.Down = dy > 10;
+        }, {passive: false});
+        window.addEventListener("touchend", (e) => { if(joyId !== null && Array.from(e.changedTouches).some(v => v.identifier === joyId)) { joyId = null; joyStick.style.transform = "translate(0,0)"; keys.Left = keys.Right = keys.Up = keys.Down = false; } });
+        document.getElementById("mJump").ontouchstart = (e) => { e.preventDefault(); if(!flightMode && deive.grounded) { deive.vy = playerStats.jumpForce; deive.grounded = false; playSound('jump'); }};
+        document.getElementById("mShoot").ontouchstart = (e) => { e.preventDefault(); shoot(); };
+    </script>
+</body>
+</html>
