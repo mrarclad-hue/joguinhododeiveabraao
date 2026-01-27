@@ -5,63 +5,97 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal de Jogos IA</title>
     <style>
+        /* Reset básico para evitar scrolls desnecessários */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: #0f172a;
             color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            margin: 0;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
         }
 
         .logo {
-            font-size: 80px;
+            font-size: clamp(3rem, 15vw, 5rem); /* Tamanho fluido */
             margin-bottom: 20px;
             background: linear-gradient(45deg, #3b82f6, #8b5cf6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: bold;
+            filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.3));
         }
 
         h1 {
-            font-size: 1.5rem;
+            font-size: clamp(1.1rem, 5vw, 1.5rem);
             margin-bottom: 40px;
             font-weight: 300;
+            line-height: 1.4;
+            max-width: 300px; /* Evita frases muito longas em uma linha só */
         }
 
         .container-botoes {
             display: flex;
-            gap: 20px;
+            flex-direction: column; /* Empilha no mobile por padrão */
+            gap: 15px;
+            width: 100%;
+            max-width: 400px; /* Limita a largura em telas grandes */
         }
 
         .btn {
-            padding: 15px 30px;
-            font-size: 1rem;
+            display: block;
+            padding: 20px; /* Área de toque maior para dedos */
+            font-size: 1.1rem;
             font-weight: bold;
             text-transform: uppercase;
             text-decoration: none;
             color: white;
-            border-radius: 8px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer;
+            border-radius: 12px;
+            transition: transform 0.1s, opacity 0.2s;
             border: none;
+            -webkit-tap-highlight-color: transparent; /* Remove o brilho de clique no Android/iOS */
         }
 
-        .btn:hover {
-            transform: translateY(-5px);
+        /* Efeito de clique para Mobile */
+        .btn:active {
+            transform: scale(0.95);
+            opacity: 0.9;
         }
 
         .btn-casual {
             background-color: #10b981;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 4px 0px #059669; /* Efeito 3D simples */
         }
 
         .btn-pro {
             background-color: #ef4444;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            box-shadow: 0 4px 0px #dc2626;
+        }
+
+        /* Ajuste para Desktop (Telas maiores que 600px) */
+        @media (min-width: 600px) {
+            .container-botoes {
+                flex-direction: row; /* Volta a ser lado a lado */
+                max-width: none;
+                justify-content: center;
+            }
+            
+            .btn {
+                min-width: 200px;
+            }
+
+            .btn:hover {
+                transform: translateY(-3px);
+            }
         }
     </style>
 </head>
